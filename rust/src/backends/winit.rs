@@ -32,7 +32,7 @@ use crate::shell::init_shell;
 use chrono::Utc;
 use smithay::backend::winit::{WinitGraphicsBackend, WinitInputBackend};
 
-use crate::renderer::egl_util::WrappedDisplay;
+use crate::renderer::egl_util::{WrappedDisplay, WrappedContext};
 use ::winit::{dpi::LogicalSize, WindowBuilder};
 use std::ffi::c_void;
 
@@ -40,6 +40,7 @@ pub struct WInitInner {
     renderer: RefCell<Option<WinitGraphicsBackend>>,
     input: RefCell<Option<WinitInputBackend>>,
     display: RefCell<Option<WrappedDisplay>>,
+    resource_context: RefCell<Option<WrappedContext>>,
 }
 
 impl Default for WInitInner {
@@ -48,6 +49,7 @@ impl Default for WInitInner {
             renderer: RefCell::new(None),
             input: RefCell::new(None),
             display: RefCell::new(None),
+            resource_context: RefCell::new(None)
         }
     }
 }
@@ -93,7 +95,8 @@ impl WInitInner {
             renderer.make_current();
             let display = WrappedDisplay::new();
 
-            //            // TODO: Allocate more contexts
+            let resource_context = WrappedContext::create_context();
+            self.resource_context.replace(Some(resource_context));
 
             display.release_context();
             self.display.replace(Some(display));
@@ -141,6 +144,16 @@ impl WInitInner {
                 }
             }
         }
+    }
+
+    pub fn make_resource_current(&self) -> bool {
+        unsafe {
+            if !self.resource_context.borrow().as_ref().unwrap().apply_context(self.display.borrow().as_ref().unwrap()) {
+                error!("Failed to make resource current");
+                return false;
+            }
+        }
+        true
     }
 
     pub fn clear_current(&self) -> bool {

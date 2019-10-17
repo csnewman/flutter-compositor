@@ -36,6 +36,21 @@ impl WrappedDisplay {
 pub struct WrappedContext(ffi::egl::types::EGLContext);
 
 impl WrappedContext {
+    pub unsafe fn create_context() -> WrappedContext {
+        debug!("Trying to initialize EGL with OpenGLES 3.0");
+        create_extra_context_inner((3, 0))
+        //    attributes.version = Some((3, 0));
+        //    match EGLContext::<B, N>::new_internal(ptr, attributes, reqs, log.clone()) {
+        //        Ok(x) => return Ok(x),
+        //        Err(err) => {
+        //            warn!(log, "EGL OpenGLES 3.0 Initialization failed with {}", err);
+        //            debug!(log, "Trying to initialize EGL with OpenGLES 2.0");
+        //            attributes.version = Some((2, 0));
+        //            return EGLContext::<B, N>::new_internal(ptr, attributes, reqs, log);
+        //        }
+        //    }
+    }
+
     pub unsafe fn current() -> Self {
         Self(ffi::egl::GetCurrentContext())
     }
@@ -61,22 +76,7 @@ impl WrappedContext {
     }
 }
 
-pub unsafe fn create_extra_context() -> WrappedContext {
-    debug!("Trying to initialize EGL with OpenGLES 3.0");
-    create_extra_context_inner((3, 0))
-    //    attributes.version = Some((3, 0));
-    //    match EGLContext::<B, N>::new_internal(ptr, attributes, reqs, log.clone()) {
-    //        Ok(x) => return Ok(x),
-    //        Err(err) => {
-    //            warn!(log, "EGL OpenGLES 3.0 Initialization failed with {}", err);
-    //            debug!(log, "Trying to initialize EGL with OpenGLES 2.0");
-    //            attributes.version = Some((2, 0));
-    //            return EGLContext::<B, N>::new_internal(ptr, attributes, reqs, log);
-    //        }
-    //    }
-}
-
-pub unsafe fn create_extra_context_inner(version: (u8, u8)) -> WrappedContext {
+unsafe fn create_extra_context_inner(version: (u8, u8)) -> WrappedContext {
     let reqs: PixelFormatRequirements = Default::default();
 
     let display = ffi::egl::GetCurrentDisplay();

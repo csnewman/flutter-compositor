@@ -225,6 +225,13 @@ impl CompositorBackend {
         }
     }
 
+    pub fn make_resource_current(&self) -> bool {
+        match &self.kind {
+            CompositorBackendKind::WInit(inner) => inner.make_resource_current(),
+            CompositorBackendKind::TtyUDev(inner) => inner.make_resource_current(),
+        }
+    }
+
     pub fn clear_current(&self) -> bool {
         match &self.kind {
             CompositorBackendKind::WInit(inner) => inner.clear_current(),

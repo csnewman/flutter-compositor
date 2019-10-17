@@ -1,0 +1,279 @@
+
+
+
+
+
+
+
+
+pub type MainThreadChannelFn = (&'static str, Box<FnMut(&Channel) + Send>);
+
+pub enum MainThreadCallback {
+    ChannelFn(MainThreadChannelFn),
+}
+
+pub struct FlutterTexture {
+    flutter_id: i32,
+    texture_id: i32,
+    width: i32,
+    height: i32,
+}
+
+
+impl FlutterInstance {
+
+
+    pub fn add_callback(&self, callback: MainThreadCallback) {
+        info!("CALLBACK SHOULD BE ADDED")
+    }
+
+    pub fn test(
+        &self,
+        window_map: &MyWindowMap,
+        compositor_token: MyCompositorToken,
+    ) {
+
+        let mut rng = rand::thread_rng();
+
+        let v: u8  = rng.gen();
+
+//        self.test_channel.borrow().upgrade().as_ref().unwrap().send_success_event(&Value::String(format!("Hello world {}", v).to_string()));
+        // redraw the frame, in a simple but inneficient way
+        {
+            let screen_dimensions = self.backend.get_framebuffer_dimensions();
+            window_map.with_windows_from_bottom_to_top(|toplevel_surface, initial_place| {
+                if let Some(wl_surface) = toplevel_surface.get_surface() {
+                    // this surface is a root of a subsurface tree that needs to be drawn
+                    self.draw_surface_tree(
+                        &wl_surface,
+                        initial_place,
+                        compositor_token,
+                        screen_dimensions,
+                    );
+                }
+            });
+        }
+    }
+
+
+    fn draw_surface_tree(
+        &self,
+        root: &wl_surface::WlSurface,
+        location: (i32, i32),
+        compositor_token: MyCompositorToken,
+        screen_dimensions: (u32, u32),
+    ) {
+        compositor_token.with_surface_tree_upward(
+            root,
+            location,
+            |_surface, attributes, role, &(mut x, mut y)| {
+//                let _1 =attributes.damage;
+//
+//                _surface.y_has_changed()
+
+                // Pull a new buffer if available
+                if let Some(data) = attributes.user_data.get_mut::<SurfaceData>() {
+                    if data.texture.is_none() {
+                        if let Some(buffer) = data.buffer.take() {
+
+                            if let Ok(m) = self.texture_from_buffer(buffer.clone()) {
+                                // release the buffer if it was an SHM buffer
+//                                if m.images.is_none() {
+//                                    buffer.release();
+//                                }
+
+                                data.texture = Some(m);
+                            } else {
+                                // there was an error reading the buffer, release it, we
+                                // already logged the error
+                                buffer.release();
+                            }
+                        }
+                    }
+                    // Now, should we be drawn ?
+                    if data.texture.is_some() {
+                        // if yes, also process the children
+                        if let Ok(subdata) = Role::<SubsurfaceRole>::data(role) {
+                            x += subdata.location.0;
+                            y += subdata.location.1;
+                        }
+                        TraversalAction::DoChildren((x, y))
+                    } else {
+                        // we are not displayed, so our children are neither
+                        TraversalAction::SkipChildren
+                    }
+                } else {
+                    // we are not displayed, so our children are neither
+                    TraversalAction::SkipChildren
+                }
+            },
+            |_surface, attributes, role, &(mut x, mut y)| {
+                if let Some(ref data) = attributes.user_data.get::<SurfaceData>() {
+                    if let Some(ref metadata) = data.texture {
+                        // we need to re-extract the subsurface offset, as the previous closure
+                        // only passes it to our children
+                        if let Ok(subdata) = Role::<SubsurfaceRole>::data(role) {
+                            x += subdata.location.0;
+                            y += subdata.location.1;
+                        }
+                        let inner = metadata.clone();
+//                        info!("{}x{}  >>> {}", x, y, inner);
+
+                        self.val.replace(inner);
+
+                        if let Some(abc) = self.engine.borrow().as_ref() {
+                            abc.mark_texture_frame_available(1);
+//                            s2.val += 1;
+                        }
+
+//                        self.engine.borrow().cl
+
+//                        let test = self.engine.borrow();
+//                        match  test {
+//
+//                        }
+
+//                        match self.engine.borrow() {
+//                            Some(ref val) => {
+//                                val.mark_texture_frame_available(1);
+//                            }
+//
+//                            _ => {
+//                                error!("UNKNOWN")
+//                            }
+//                        }
+//                        .unwrap().mark_texture_frame_available(1);
+//                        self.render_texture(
+//                            frame,
+//                            &metadata.texture,
+//                            metadata.fragment,
+//                            metadata.y_inverted,
+//                            metadata.dimensions,
+//                            (x, y),
+//                            screen_dimensions,
+//                            ::glium::Blend {
+//                                color: ::glium::BlendingFunction::Addition {
+//                                    source: ::glium::LinearBlendingFactor::One,
+//                                    destination: ::glium::LinearBlendingFactor::OneMinusSourceAlpha,
+//                                },
+//                                alpha: ::glium::BlendingFunction::Addition {
+//                                    source: ::glium::LinearBlendingFactor::One,
+//                                    destination: ::glium::LinearBlendingFactor::OneMinusSourceAlpha,
+//                                },
+//                                ..Default::default()
+//                            },
+//                        );
+                    }
+                }
+            },
+            |_, _, _, _| true,
+        );
+    }
+
+    pub fn texture_from_buffer(&self, buffer: wl_buffer::WlBuffer) -> Result<u32, ()> {
+        // try to retrieve the egl contents of this buffer
+        let testing: &RefCell<Option<EGLDisplay>> = self.egl_display.borrow();
+
+        let images = if let Some(display) = testing.borrow().as_ref() {
+            display.egl_buffer_contents(buffer)
+        } else {
+            Err(BufferAccessError::NotManaged(buffer))
+        };
+        match images {
+            Ok(images) => {
+
+                info!("EGL IMAGES");
+                // we have an EGL buffer
+//                let format = match images.format {
+//                    Format::RGB => UncompressedFloatFormat::U8U8U8,
+//                    Format::RGBA => UncompressedFloatFormat::U8U8U8U8,
+//                    _ => {
+//                        warn!("Unsupported EGL buffer format {:?}", images.format);
+//                        return Err(());
+//                    }
+//                };
+//                let opengl_texture = 1;
+
+//                let opengl_texture = Texture2d::empty_with_format(
+//                    &self.wm_backend,
+//                    format,
+//                    MipmapsOption::NoMipmap,
+//                    images.width,
+//                    images.height,
+//                )
+//                .unwrap();
+
+//                info!("Allocated texture {}", opengl_texture.get_id());
+
+//                unsafe {
+//                    images
+//                        .bind_to_texture(0, opengl_texture.get_id())
+//                        .expect("Failed to bind to texture");
+//                }
+//                Ok(TextureMetadata {
+//                    texture: opengl_texture,
+//                    fragment: crate::shaders::BUFFER_RGBA,
+//                    y_inverted: images.y_inverted,
+//                    dimensions: (images.width, images.height),
+//                    images: Some(images), // I guess we need to keep this alive ?
+//                })
+
+//                Ok(1 as u32)
+                unimplemented!()
+            }
+            Err(BufferAccessError::NotManaged(buffer)) => {
+
+
+                info!("SHM IMAGES");
+                // this is not an EGL buffer, try SHM
+                match shm_buffer_contents(&buffer, |slice, data| {
+                    unsafe { self.wm_context.apply_context(&self.display); }
+
+
+                    let gl = self.wm_context.get_gl();
+                    let id = gl_util::upload_texture(gl, data, slice);
+
+
+                    unsafe { self.display.release_context(); }
+
+                    id
+
+//                    crate::shm_load::load_shm_buffer(data, slice)
+//                        .map(|(image, kind)| (Texture2d::new(&self.wm_backend, image).unwrap(), kind, data))
+                }) {
+                    Ok(val) => Ok(val),
+                    Err(err) => {
+                        error!("EGL error {:?}", err);
+                        Err(())
+                    },
+                }
+
+
+//                self.texture_from_shm_buffer(buffer)
+            }
+            Err(err) => {
+                error!("EGL error {:?}", err);
+                Err(())
+            }
+        }
+    }
+}
+
+
+
+use crate::flutter::channel::EventHandler;
+use crate::flutter::FlutterInstanceRef;
+use crate::flutter::codec::Value;
+use crate::flutter::error::MethodCallError;
+
+pub struct TestHandler;
+
+impl EventHandler for TestHandler {
+    fn on_listen(&self, args: Value, flutter: FlutterInstanceRef) -> Result<Value, MethodCallError> {
+        Ok(Value::Null)
+    }
+
+    fn on_cancel(&self, flutter: FlutterInstanceRef) -> Result<Value, MethodCallError> {
+        Ok(Value::Null)
+    }
+}

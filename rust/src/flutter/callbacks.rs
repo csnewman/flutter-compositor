@@ -22,11 +22,7 @@ pub unsafe extern "C" fn present(user_data: *mut c_void) -> bool {
 pub unsafe extern "C" fn make_current(user_data: *mut c_void) -> bool {
     debug!("make_current");
     let instance = FlutterCompositorRef::get_from_mutex_ptr(user_data as _);
-    debug!("got lock");
-
-    let res = instance.backend.make_current();
-    debug!("make_current: end");
-    res
+    instance.backend.make_current()
 }
 
 pub unsafe extern "C" fn clear_current(user_data: *mut c_void) -> bool {
@@ -42,15 +38,8 @@ pub extern "C" fn fbo_callback(_user_data: *mut c_void) -> c_uint {
 
 pub unsafe extern "C" fn make_resource_current(user_data: *mut c_void) -> bool {
     debug!("make_resource_current");
-    //    let instance = FlutterCompositorRef::get_from_mutex_ptr(user_data as _);
-    //
-    //    if !instance.resource_context.apply_context(&instance.display) {
-    //        error!("Failed to apply resource context");
-    //        return false;
-    //    }
-    //    true
-
-    false
+    let instance = FlutterCompositorRef::get_from_mutex_ptr(user_data as _);
+    instance.backend.make_resource_current()
 }
 
 pub unsafe extern "C" fn gl_proc_resolver(

@@ -63,7 +63,7 @@ use crate::input_handler::AnvilInputHandler;
 use crate::shell::{init_shell, MyWindowMap, Roles};
 
 use crate::backends::{CompositorBackend, CompositorBackendKind};
-use crate::renderer::egl_util::WrappedDisplay;
+use crate::renderer::egl_util::{WrappedDisplay, WrappedContext};
 use crate::FlutterCompositorWeakRef;
 use chrono::Utc;
 use log::{debug, error, info, trace, warn};
@@ -90,6 +90,7 @@ pub struct UdevInner {
     notifier: RefCell<Option<AutoSessionNotifier>>,
     surface: RefCell<Option<RenderSurface>>,
     display: RefCell<Option<WrappedDisplay>>,
+    resource_context: RefCell<Option<WrappedContext>>,
     bound_session: RefCell<Option<BoundAutoSession>>,
 }
 
@@ -102,6 +103,7 @@ impl Default for UdevInner {
             notifier: RefCell::new(None),
             surface: RefCell::new(None),
             display: RefCell::new(None),
+            resource_context: RefCell::new(None),
             bound_session: RefCell::new(None),
         }
     }
@@ -226,6 +228,16 @@ impl UdevInner {
         }
     }
 
+    pub fn make_resource_current(&self) -> bool {
+        unsafe {
+            if !self.resource_context.borrow().as_ref().unwrap().apply_context(self.display.borrow().as_ref().unwrap()) {
+                error!("Failed to make resource current");
+                return false;
+            }
+        }
+        true
+    }
+
     pub fn clear_current(&self) -> bool {
         unsafe {
             self.display.borrow().as_ref().unwrap().release_context();
@@ -340,7 +352,8 @@ impl</*S: SessionNotifier,*/ Data: 'static> UdevHandler for UdevHandlerImpl</*S,
                     surface.make_current();
                     let display = WrappedDisplay::new();
 
-                    //            // TODO: Allocate more contexts
+                    let resource_context = WrappedContext::create_context();
+                    inner.resource_context.replace(Some(resource_context));
 
                     display.release_context();
 
