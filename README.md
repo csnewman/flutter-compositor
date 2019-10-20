@@ -21,7 +21,7 @@ Only a small number of features are currently implemented.
 - [ ] Wayland Shell
 - [ ] Xdg Shell
 - [ ] Data device support (i.e. clipboard & drag and drop)
-- [ ] NVidea support (Blocked by [Smitahy#128](https://github.com/Smithay/smithay/issues/128))
+- [ ] nVidea support (Blocked by [Smitahy#128](https://github.com/Smithay/smithay/issues/128))
 - [ ] Multi-monitor support (Blocked by [Flutter#30701](https://github.com/flutter/flutter/issues/30701))
 - [ ] Damage tracking (Blocked by [Flutter#33939](https://github.com/flutter/flutter/issues/33939))
 - [ ] Performance
