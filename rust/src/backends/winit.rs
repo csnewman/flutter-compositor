@@ -27,16 +27,18 @@ use smithay::{
 
 use log::{debug, error, info, trace, warn};
 
-use crate::input_handler::AnvilInputHandler;
 use crate::shell::init_shell;
 use chrono::Utc;
 use smithay::backend::winit::{WinitGraphicsBackend, WinitInputBackend};
 
-use crate::renderer::egl_util::{WrappedDisplay, WrappedContext};
+use crate::backends::input_handler::FlutterInputHandler;
+use crate::renderer::egl_util::{WrappedContext, WrappedDisplay};
+use crate::FlutterCompositorWeakRef;
 use ::winit::{dpi::LogicalSize, WindowBuilder};
 use std::ffi::c_void;
 
 pub struct WInitInner {
+    compositor: RefCell<FlutterCompositorWeakRef>,
     renderer: RefCell<Option<WinitGraphicsBackend>>,
     input: RefCell<Option<WinitInputBackend>>,
     display: RefCell<Option<WrappedDisplay>>,
@@ -46,15 +48,20 @@ pub struct WInitInner {
 impl Default for WInitInner {
     fn default() -> Self {
         Self {
+            compositor: RefCell::new(FlutterCompositorWeakRef::default()),
             renderer: RefCell::new(None),
             input: RefCell::new(None),
             display: RefCell::new(None),
-            resource_context: RefCell::new(None)
+            resource_context: RefCell::new(None),
         }
     }
 }
 
 impl WInitInner {
+    pub fn set_compositor(&self, compositor: FlutterCompositorWeakRef) {
+        self.compositor.replace(compositor);
+    }
+
     pub fn create_window(&self) {
         info!("Creating winit window");
         let (renderer, mut input) = winit::init_from_builder(
@@ -103,14 +110,7 @@ impl WInitInner {
         }
 
         debug!("Setting input handler");
-        input.set_handler(AnvilInputHandler::new(
-//            pointer,
-//            keyboard,
-//            window_map.clone(),
-//            (0, 0),
-//            running.clone(),
-//            pointer_location.clone(),
-        ));
+        input.set_handler(FlutterInputHandler::new(self.compositor.borrow().clone()));
 
         debug!("Done?");
     }
@@ -148,7 +148,13 @@ impl WInitInner {
 
     pub fn make_resource_current(&self) -> bool {
         unsafe {
-            if !self.resource_context.borrow().as_ref().unwrap().apply_context(self.display.borrow().as_ref().unwrap()) {
+            if !self
+                .resource_context
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .apply_context(self.display.borrow().as_ref().unwrap())
+            {
                 error!("Failed to make resource current");
                 return false;
             }

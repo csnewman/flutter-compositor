@@ -19,8 +19,6 @@ mod window_map;
 
 mod shell;
 
-pub mod input_handler;
-
 use crate::backends::CompositorBackend;
 use crate::flutter::FlutterEngine;
 use backends::udev;

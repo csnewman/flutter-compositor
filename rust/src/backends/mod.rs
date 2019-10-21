@@ -7,13 +7,14 @@ use smithay::wayland::data_device::{
     default_action_chooser, init_data_device, set_data_device_focus, DataDeviceEvent,
 };
 use smithay::wayland::output::{Mode, Output, PhysicalProperties};
-use smithay::wayland::seat::{Seat, XkbConfig};
+use smithay::wayland::seat::{KeyboardHandle, Seat, XkbConfig};
 use smithay::wayland::shm::init_shm_global;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
 use wayland_server::calloop::EventLoop;
 use wayland_server::Display;
 
+use crate::backends::seat::FlutterSeat;
 use log::{debug, error, info, trace, warn};
 use std::ffi::c_void;
 use std::sync::Arc;
@@ -21,11 +22,17 @@ use std::sync::Arc;
 pub(crate) mod udev;
 pub(crate) mod winit;
 
+pub(crate) mod seat;
+
+pub(crate) mod input_handler;
+
 pub struct CompositorBackend {
     compositor: RefCell<FlutterCompositorWeakRef>,
     display: RefCell<Option<Display>>,
     pub(crate) event_loop: Arc<RefCell<Option<EventLoop<()>>>>,
     kind: CompositorBackendKind,
+    seat: RefCell<Option<FlutterSeat>>,
+    keyboard: RefCell<Option<KeyboardHandle>>,
 }
 
 pub enum CompositorBackendKind {
@@ -40,6 +47,8 @@ impl CompositorBackend {
             display: RefCell::new(None),
             event_loop: Arc::new(RefCell::new(None)),
             kind: CompositorBackendKind::WInit(WInitInner::default()),
+            seat: RefCell::new(None),
+            keyboard: RefCell::new(None),
         }
     }
 
@@ -49,6 +58,8 @@ impl CompositorBackend {
             display: RefCell::new(None),
             event_loop: Arc::new(RefCell::new(None)),
             kind: CompositorBackendKind::TtyUDev(UdevInner::default()),
+            seat: RefCell::new(None),
+            keyboard: RefCell::new(None),
         }
     }
 
@@ -56,7 +67,9 @@ impl CompositorBackend {
         info!("Initialising backend");
         self.compositor.replace(compositor.clone());
         match &self.kind {
-            CompositorBackendKind::WInit(inner) => {}
+            CompositorBackendKind::WInit(inner) => {
+                inner.set_compositor(compositor.clone());
+            }
             CompositorBackendKind::TtyUDev(inner) => {
                 inner.set_compositor(compositor.clone());
             }
@@ -128,18 +141,19 @@ impl CompositorBackend {
 
         // Configure input
         debug!("Configuring input");
-        let (mut w_seat, _) = Seat::new(
-            &mut display,
+        let seat = FlutterSeat::new(
+            compositor.clone(),
             match &self.kind {
                 CompositorBackendKind::WInit(inner) => "Winit".into(),
                 CompositorBackendKind::TtyUDev(inner) => inner.seat_name(),
             },
-            compositor_token.clone(),
-            None,
         );
+        seat.create(&mut display, compositor_token.clone());
+        self.seat.replace(Some(seat));
 
         info!("1");
 
+        /*
         let pointer = w_seat.add_pointer(compositor_token.clone(), move |new_status| {
             //            *cursor_status.lock().unwrap() = new_status;
         });
@@ -148,6 +162,7 @@ impl CompositorBackend {
                 set_data_device_focus(seat, focus.and_then(|s| s.as_ref().client()))
             })
             .expect("Failed to initialize the keyboard");
+        self.keyboard.replace(Some(keyboard));*/
 
         let (output, _output_global) = Output::new(
             &mut display,

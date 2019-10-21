@@ -59,11 +59,11 @@ use smithay::{
     },
 };
 
-use crate::input_handler::AnvilInputHandler;
 use crate::shell::{init_shell, MyWindowMap, Roles};
 
+use crate::backends::input_handler::FlutterInputHandler;
 use crate::backends::{CompositorBackend, CompositorBackendKind};
-use crate::renderer::egl_util::{WrappedDisplay, WrappedContext};
+use crate::renderer::egl_util::{WrappedContext, WrappedDisplay};
 use crate::FlutterCompositorWeakRef;
 use chrono::Utc;
 use log::{debug, error, info, trace, warn};
@@ -164,15 +164,7 @@ impl UdevInner {
             .register(libinput_context.observer());
         libinput_context.udev_assign_seat(&seat).unwrap();
         let mut libinput_backend = LibinputInputBackend::new(libinput_context, None);
-        libinput_backend.set_handler(AnvilInputHandler::new_with_session(
-            //            pointer,
-            //            keyboard,
-            //            window_map.clone(),
-            //            (w, h),
-            //            running.clone(),
-            //            pointer_location,
-            self.session.borrow().as_ref().unwrap().clone(),
-        ));
+        libinput_backend.set_handler(FlutterInputHandler::new(self.compositor.borrow().clone()));
 
         let libinput_event_source = libinput_bind(libinput_backend, event_loop.handle())
             .map_err(|e| -> IoError { e.into() })
@@ -230,7 +222,13 @@ impl UdevInner {
 
     pub fn make_resource_current(&self) -> bool {
         unsafe {
-            if !self.resource_context.borrow().as_ref().unwrap().apply_context(self.display.borrow().as_ref().unwrap()) {
+            if !self
+                .resource_context
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .apply_context(self.display.borrow().as_ref().unwrap())
+            {
                 error!("Failed to make resource current");
                 return false;
             }
