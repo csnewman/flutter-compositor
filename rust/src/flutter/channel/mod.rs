@@ -49,7 +49,10 @@ pub trait Channel {
     /// This method send a response to flutter. This is a low level method.
     fn send_response(&self, response_handle: PlatformMessageResponseHandle, buf: &[u8]) {
         if let Some(compositor_ref) = self.compositor() {
-            //            compositor_ref.get().engine.borrow().send_platform_message_response(response_handle, buf);
+            compositor_ref
+                .get()
+                .engine
+                .send_platform_message_response(response_handle, buf);
         } else {
             error!("Channel {} was not initialized", self.name());
         }
@@ -58,7 +61,7 @@ pub trait Channel {
     /// Send a platform message over this channel. This is a low level method.
     fn send_platform_message(&self, message: PlatformMessage) {
         if let Some(compositor_ref) = self.compositor() {
-            //            flutter_ref.get().engine.borrow().as_ref().unwrap().send_platform_message(message);
+            compositor_ref.get().engine.send_platform_message(message);
         } else {
             error!("Channel {} was not initialized", self.name());
         }
@@ -84,7 +87,7 @@ pub trait MethodChannel: Channel {
         if let Some(handler) = self.method_handler() {
             if let Some(compositor_ref) = self.compositor() {
                 let call = self.codec().decode_method_call(msg.message).unwrap();
-                let channel = self.name();
+                let channel = self.name().to_string();
                 trace!(
                     "on channel {}, got method call {} with args {:?}",
                     channel,
@@ -103,30 +106,28 @@ pub trait MethodChannel: Channel {
                             Ok(value) => MethodCallResult::Ok(value),
                             Err(error) => {
                                 error!(
-                                target: handler
-                                    .log_target()
-                                    .unwrap_or("Unknown plugin"),
-                                "error in method call {}#{}: {}",
-                                channel,
-                                method,
-                                error);
+                                    target: handler
+                                        .log_target()
+                                        .unwrap_or("Unknown plugin"),
+                                    "error in method call {}#{}: {}",
+                                    channel,
+                                    method,
+                                    error);
                                 error.into()
                             }
                         };
 
-                        // TODO: Implement
-                        panic!("NOT IMPLEMENTED");
-                        //                        flutter_ref.get().add_callback(crate::flutter::MainThreadCallback::ChannelFn(
-                        //                            (
-                        //                                channel,
-                        //                                Box::new(move |channel| {
-                        //                                    let buf = codec.encode_method_call_response(&response);
-                        //                                    if let Some(handle) = response_handle.take() {
-                        //                                        channel.send_response(handle, &buf);
-                        //                                    }
-                        //                                }),
-                        //                            ),
-                        //                        ));
+                        compositor_ref.get().main_thread_sender.send(
+                            crate::MainThreadCallback::ChannelFn((
+                                channel,
+                                Box::new(move |channel| {
+                                    let buf = codec.encode_method_call_response(&response);
+                                    if let Some(handle) = response_handle.take() {
+                                        channel.send_response(handle, &buf);
+                                    }
+                                }),
+                            )),
+                        );
                     }),
                 );
             }
@@ -166,7 +167,7 @@ pub trait MessageChannel: Channel {
         if let Some(handler) = self.message_handler() {
             if let Some(compositor_ref) = self.compositor() {
                 let message = self.codec().decode_message(msg.message).unwrap();
-                let channel = self.name();
+                let channel = self.name().to_string();
                 trace!("on channel {}, got message {:?}", channel, message);
                 let mut response_handle = msg.response_handle.take();
                 let codec = self.codec();
@@ -189,19 +190,17 @@ pub trait MessageChannel: Channel {
                             }
                         };
                         if response_handle.is_some() {
-                            // TODO: Implement
-                            panic!("Not implemented");
-                            //                            flutter_ref.get().add_callback(crate::flutter::MainThreadCallback::ChannelFn(
-                            //                                (
-                            //                                    channel,
-                            //                                    Box::new(move |channel| {
-                            //                                        let buf = codec.encode_message(&response);
-                            //                                        if let Some(handle) = response_handle.take() {
-                            //                                            channel.send_response(handle, &buf);
-                            //                                        }
-                            //                                    }),
-                            //                                ),
-                            //                            ));
+                            compositor_ref.get().main_thread_sender.send(
+                                crate::MainThreadCallback::ChannelFn((
+                                    channel,
+                                    Box::new(move |channel| {
+                                        let buf = codec.encode_message(&response);
+                                        if let Some(handle) = response_handle.take() {
+                                            channel.send_response(handle, &buf);
+                                        }
+                                    }),
+                                )),
+                            );
                         }
                     }),
                 );

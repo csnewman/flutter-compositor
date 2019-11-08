@@ -60,8 +60,11 @@ pub unsafe extern "C" fn platform_message_callback(
 ) {
     debug!("platform_message_callback");
 
-    //    let instance = FlutterCompositorRef::get_from_mutex_ptr(user_data as _);
-    //    instance.channel_registry.borrow_mut().handle((*platform_message).into());
+    let instance = FlutterCompositorRef::get_from_mutex_ptr(user_data as _);
+    instance
+        .engine
+        .channel_registry
+        .handle((*platform_message).into());
 }
 
 pub extern "C" fn root_isolate_create_callback(_user_data: *mut c_void) {

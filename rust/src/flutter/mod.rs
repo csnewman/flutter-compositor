@@ -38,6 +38,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Weak;
 
+use crate::flutter::ffi::{PlatformMessage, PlatformMessageResponseHandle};
 use rand::Rng;
 
 #[macro_use]
@@ -46,15 +47,15 @@ mod macros;
 mod callbacks;
 mod ffi;
 
-mod channel;
-mod codec;
+pub mod channel;
+pub mod codec;
 
-mod error;
+pub mod error;
 
 pub struct FlutterEngine {
     compositor: RefCell<FlutterCompositorWeakRef>,
     engine_ptr: RefCell<flutter_engine_sys::FlutterEngine>,
-    channel_registry: ChannelRegistry,
+    pub channel_registry: ChannelRegistry,
 }
 
 impl FlutterEngine {
@@ -238,12 +239,15 @@ impl FlutterEngine {
         unsafe {
             flutter_engine_sys::FlutterEngineSendPointerEvent(self.engine_ptr, &event, 1);
         }
-    }
+    }*/
 
     pub fn send_platform_message(&self, message: PlatformMessage) {
         trace!("Sending message on channel {}", message.channel);
         unsafe {
-            flutter_engine_sys::FlutterEngineSendPlatformMessage(self.engine_ptr, &message.into());
+            flutter_engine_sys::FlutterEngineSendPlatformMessage(
+                *self.engine_ptr.borrow(),
+                &message.into(),
+            );
         }
     }
 
@@ -255,13 +259,13 @@ impl FlutterEngine {
         trace!("Sending message response");
         unsafe {
             flutter_engine_sys::FlutterEngineSendPlatformMessageResponse(
-                self.engine_ptr,
+                *self.engine_ptr.borrow(),
                 response_handle.into(),
                 bytes.as_ptr(),
                 bytes.len(),
             );
         }
-    }*/
+    }
 
     pub fn shutdown(&self) {
         unsafe {

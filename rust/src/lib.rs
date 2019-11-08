@@ -11,7 +11,7 @@ use wayland_server::calloop::EventLoop;
 use wayland_server::Display;
 
 pub mod backends;
-mod flutter;
+pub mod flutter;
 
 mod renderer;
 
@@ -20,6 +20,7 @@ mod window_map;
 mod shell;
 
 use crate::backends::CompositorBackend;
+use crate::flutter::channel::Channel;
 use crate::flutter::FlutterEngine;
 use backends::udev;
 use backends::winit;
@@ -27,7 +28,8 @@ use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Weak};
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{mpsc, Arc, Weak};
 use tokio::runtime::{Runtime, TaskExecutor};
 
 pub struct FlutterCompositorRef {
@@ -97,10 +99,18 @@ impl Clone for FlutterCompositorWeakRef {
 unsafe impl Send for FlutterCompositorWeakRef {}
 unsafe impl Sync for FlutterCompositorWeakRef {}
 
+pub(crate) type MainThreadChannelFn = (String, Box<dyn FnMut(&dyn Channel) + Send>);
+
+pub(crate) enum MainThreadCallback {
+    ChannelFn(MainThreadChannelFn),
+}
+
 pub struct FlutterCompositor {
     backend: CompositorBackend,
     runtime: Runtime,
     task_executor: TaskExecutor,
+    main_thread_sender: Sender<MainThreadCallback>,
+    main_thread_receiver: Receiver<MainThreadCallback>,
     engine: FlutterEngine,
 }
 
@@ -108,10 +118,14 @@ impl FlutterCompositor {
     pub fn new(backend: CompositorBackend) -> FlutterCompositorRef {
         let runtime = Runtime::new().unwrap();
 
+        let (main_tx, main_rx) = mpsc::channel();
+
         let compositor_ref = FlutterCompositorRef {
             inner: Arc::new(ReentrantMutex::new(Self {
                 backend,
                 task_executor: runtime.executor(),
+                main_thread_sender: main_tx,
+                main_thread_receiver: main_rx,
                 runtime,
                 engine: FlutterEngine::new(),
             })),
@@ -127,93 +141,14 @@ impl FlutterCompositor {
     }
 }
 
-/*
-
-new compositor
-
-
-
-
-    backend: Box<GLGraphicsBackend>,
-    egl_display: Rc<RefCell<Option<EGLDisplay>>>,
-    display: egl_util::WrappedDisplay,
-    resource_context: egl_util::WrappedContext,
-
-    wm_context: egl_util::WrappedContext,
-
-
-
-backend: Box<GLGraphicsBackend>, egl_display: Rc<RefCell<Option<EGLDisplay>>>
-
-let dims = backend.get_framebuffer_dimensions();
-
-        unsafe {
-            match backend.make_current() {
-                Ok(_) => {}
-                Err(err) => {
-                    panic!("Failed to make backend current");
-                }
-            }
-        }
-
-        let wrapped_display = unsafe { egl_util::WrappedDisplay::new() };
-
-        let resource_context = unsafe { egl_util::create_extra_context() };
-
-        unsafe { backend.make_current(); }
-
-        let wm_context = unsafe { egl_util::create_extra_context() };
-
-        unsafe {
-            wrapped_display.release_context();
-
-            if backend.is_current() {
-                panic!("Failed to release graphics backend");
-            }
-        }
-
-
-
-
-
-    new engine
-
-
-
-
-    pub channel_registry: RefCell<ChannelRegistry>,
-    pub test_handler: Arc<TestHandler>,
-    pub test_channel: RefCell<Weak<EventChannel>>,
-
-
-        let instance_ref = FlutterInstanceRef(Arc::new(ReentrantMutex::new(FlutterInstance {
-
-            channel_registry: RefCell::new(ChannelRegistry::new()),
-            test_handler: Arc::new(TestHandler),
-            test_channel: RefCell::new(Weak::new()),
-        })));
-
-        info!("Setting up channel registry");
-
-        {
-            let instance = instance_ref.get();
-
-            let handler = Arc::downgrade(&instance.test_handler);
-
-            let mut registry = instance.channel_registry.borrow_mut();
-            registry.init(instance_ref.downgrade());
-            let channel = registry.register_channel(EventChannel::new("test/stream", handler, instance_ref.downgrade()));
-
-            instance_ref.get().test_channel.replace(channel);
-
-//            channel.upgrade().as_ref().unwrap().send_success_event(&Value::String("Hello world".to_string()));
-        }
-
-
-
-*/
-
 impl FlutterCompositorRef {
+    pub fn register_channel<C>(&self, mut channel: C) -> Weak<C>
+    where
+        C: Channel + 'static,
+    {
+        self.get().engine.channel_registry.register_channel(channel)
+    }
+
     pub fn start(&self) {
         let weak = self.downgrade();
 

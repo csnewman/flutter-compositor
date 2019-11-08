@@ -13,14 +13,14 @@ use std::cell::RefCell;
 
 pub struct ChannelRegistry {
     compositor: RefCell<FlutterCompositorWeakRef>,
-    channels: HashMap<String, Arc<dyn Channel>>,
+    channels: RefCell<HashMap<String, Arc<dyn Channel>>>,
 }
 
 impl ChannelRegistry {
     pub fn new() -> Self {
         Self {
             compositor: RefCell::new(Default::default()),
-            channels: HashMap::new(),
+            channels: RefCell::new(HashMap::new()),
         }
     }
 
@@ -32,13 +32,13 @@ impl ChannelRegistry {
     where
         F: FnMut(&Channel),
     {
-        if let Some(channel) = self.channels.get(channel_name) {
+        if let Some(channel) = self.channels.borrow().get(channel_name) {
             f(&**channel);
         }
     }
 
-    pub fn handle(&mut self, mut message: PlatformMessage) {
-        if let Some(channel) = self.channels.get(message.channel.deref()) {
+    pub fn handle(&self, mut message: PlatformMessage) {
+        if let Some(channel) = self.channels.borrow().get(message.channel.deref()) {
             trace!("Processing message from channel: {}", message.channel);
             channel.handle_platform_message(message);
         } else {
@@ -48,19 +48,22 @@ impl ChannelRegistry {
             );
             if let Some(handle) = message.response_handle.take() {
                 let compositor_ref = self.compositor.borrow().upgrade().unwrap();
-                //                compositor_ref.get().engine.borrow().as_ref().unwrap().send_platform_message_response(handle, &[]);
+                let compositor = compositor_ref.get();
+                compositor
+                    .engine
+                    .send_platform_message_response(handle, &[]);
             }
         }
     }
 
-    pub fn register_channel<C>(&mut self, mut channel: C) -> Weak<C>
+    pub fn register_channel<C>(&self, mut channel: C) -> Weak<C>
     where
         C: Channel + 'static,
     {
         let name = channel.name().to_owned();
         let arc = Arc::new(channel);
         let weak = Arc::downgrade(&arc);
-        self.channels.insert(name, arc);
+        self.channels.borrow_mut().insert(name, arc);
         weak
     }
 }
