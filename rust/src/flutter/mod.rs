@@ -42,7 +42,7 @@ use crate::flutter::ffi::{PlatformMessage, PlatformMessageResponseHandle};
 use rand::Rng;
 
 #[macro_use]
-mod macros;
+pub mod macros;
 
 mod callbacks;
 mod ffi;

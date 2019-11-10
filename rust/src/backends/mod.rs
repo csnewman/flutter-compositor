@@ -14,6 +14,7 @@ use std::cell::RefCell;
 use wayland_server::calloop::EventLoop;
 use wayland_server::Display;
 
+use crate::backends::input::manager::InputManager;
 use crate::backends::seat::FlutterSeat;
 use log::{debug, error, info, trace, warn};
 use std::ffi::c_void;
@@ -24,7 +25,7 @@ pub(crate) mod winit;
 
 pub(crate) mod seat;
 
-pub(crate) mod input_handler;
+pub(crate) mod input;
 
 pub struct CompositorBackend {
     compositor: RefCell<FlutterCompositorWeakRef>,
@@ -32,7 +33,7 @@ pub struct CompositorBackend {
     pub(crate) event_loop: Arc<RefCell<Option<EventLoop<()>>>>,
     kind: CompositorBackendKind,
     seat: RefCell<Option<FlutterSeat>>,
-    keyboard: RefCell<Option<KeyboardHandle>>,
+    pub(crate) input: RefCell<Option<InputManager>>,
 }
 
 pub enum CompositorBackendKind {
@@ -48,7 +49,7 @@ impl CompositorBackend {
             event_loop: Arc::new(RefCell::new(None)),
             kind: CompositorBackendKind::WInit(WInitInner::default()),
             seat: RefCell::new(None),
-            keyboard: RefCell::new(None),
+            input: RefCell::new(None),
         }
     }
 
@@ -59,7 +60,7 @@ impl CompositorBackend {
             event_loop: Arc::new(RefCell::new(None)),
             kind: CompositorBackendKind::TtyUDev(UdevInner::default()),
             seat: RefCell::new(None),
-            keyboard: RefCell::new(None),
+            input: RefCell::new(None),
         }
     }
 
@@ -123,6 +124,11 @@ impl CompositorBackend {
         }
 
         // Initialising IO
+        self.input.replace(Some(InputManager::new(
+            Default::default(),
+            self.compositor.borrow().clone(),
+        )));
+
         match &self.kind {
             CompositorBackendKind::WInit(inner) => {
                 inner.init_io(display);

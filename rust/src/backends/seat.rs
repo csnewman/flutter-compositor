@@ -80,6 +80,7 @@ where
                 }
                 wl_seat::Request::GetKeyboard { id } => {
                     debug!("GetKeyboard");
+
                     // let keyboard = self::keyboard::implement_keyboard(id, inner.keyboard.as_ref());
                     // if let Some(ref kbd_handle) = inner.keyboard {
                     //     kbd_handle.new_kbd(keyboard);

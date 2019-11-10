@@ -157,6 +157,14 @@ impl FlutterCompositorRef {
 
             compositor.backend.init(weak.clone());
 
+            {
+                let mut input_ref = compositor.backend.input.borrow_mut();
+                input_ref
+                    .as_mut()
+                    .unwrap()
+                    .register_channels(&compositor.engine.channel_registry);
+            }
+
             FlutterEngine::run(&mut compositor);
 
             compositor.backend.run();

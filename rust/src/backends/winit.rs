@@ -31,7 +31,7 @@ use crate::shell::init_shell;
 use chrono::Utc;
 use smithay::backend::winit::{WinitGraphicsBackend, WinitInputBackend};
 
-use crate::backends::input_handler::FlutterInputHandler;
+use crate::backends::input::handler::FlutterInputHandler;
 use crate::renderer::egl_util::{WrappedContext, WrappedDisplay};
 use crate::FlutterCompositorWeakRef;
 use ::winit::{dpi::LogicalSize, WindowBuilder};

@@ -61,7 +61,7 @@ use smithay::{
 
 use crate::shell::{init_shell, MyWindowMap, Roles};
 
-use crate::backends::input_handler::FlutterInputHandler;
+use crate::backends::input::handler::FlutterInputHandler;
 use crate::backends::{CompositorBackend, CompositorBackendKind};
 use crate::renderer::egl_util::{WrappedContext, WrappedDisplay};
 use crate::FlutterCompositorWeakRef;
