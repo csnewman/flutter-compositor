@@ -195,6 +195,18 @@ impl FlutterCompositorRef {
                 let compositor_ref = weak.upgrade().unwrap();
                 let compositor = compositor_ref.get();
                 compositor.backend.update();
+
+                // Process callbacks
+                let callbacks: Vec<MainThreadCallback> = compositor.main_thread_receiver.try_iter().collect();
+                for cb in callbacks {
+                    match cb {
+                        MainThreadCallback::ChannelFn((name, mut f)) => {
+                            compositor.engine.channel_registry.with_channel(&name, |channel| {
+                                f(channel);
+                            });
+                        },
+                    }
+                }
             }
 
             //            drawer.get().test(&*window_map.borrow(), compositor_token);

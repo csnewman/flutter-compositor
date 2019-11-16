@@ -62,7 +62,7 @@ pub struct InputManager {
     keyevent_channel: Weak<BasicMessageChannel>,
 }
 
-pub const KEYEVENT_CHANNEL_NAME: &str = "flutter/keyevent";
+const KEYEVENT_CHANNEL_NAME: &str = "flutter/keyevent";
 
 impl InputManager {
     pub fn new(xkb_config: XkbConfig, compositor: FlutterCompositorWeakRef) -> InputManager {
@@ -188,11 +188,14 @@ impl InputManager {
         } else {
             GLFW_MAPPING[rawcode as usize]
         };
-        //        let keycode = state.key_get_one_sym(scancode);
+        let content = state.key_get_utf8(scancode);
 
         debug!(
-            "key event scancode={} state={:?} keycode={}",
-            scancode, keystate, keycode,
+            "key event scancode={} state={:?} keycode={}, content='{}'",
+            scancode,
+            keystate,
+            keycode,
+            content,
         );
 
         let direction = match keystate {
@@ -216,6 +219,18 @@ impl InputManager {
                 "type": if keystate ==  KeyState::Released { "keyup" } else { "keydown" }
             });
             channel.send(&json);
+        }
+
+        // Send text events
+        if !content.is_empty() && keystate == KeyState::Pressed && content.chars().all(|x| !x.is_control()) {
+            let compositor_ref = self.compositor.upgrade().unwrap();
+            let compositor = compositor_ref.get();
+            let mut textinput = compositor.engine.text_input.borrow_mut();
+
+            textinput.with_state(|state| {
+                state.add_characters(&content);
+            });
+            textinput.notify_changes();
         }
     }
 }

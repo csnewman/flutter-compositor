@@ -28,7 +28,7 @@ impl ChannelRegistry {
         self.compositor.replace(compositor);
     }
 
-    pub fn with_channel<F>(&self, channel_name: &'static str, mut f: F)
+    pub fn with_channel<F>(&self, channel_name: &str, mut f: F)
     where
         F: FnMut(&Channel),
     {

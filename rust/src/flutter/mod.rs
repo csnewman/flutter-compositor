@@ -20,7 +20,7 @@ use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefMut;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-mod utils;
+pub(crate) mod utils;
 
 use smithay::{
     reexports::wayland_server::protocol::{wl_buffer, wl_surface},
@@ -41,6 +41,8 @@ use std::sync::Weak;
 use crate::flutter::ffi::{PlatformMessage, PlatformMessageResponseHandle};
 use rand::Rng;
 
+use crate::flutter::textinput::TextInputManager;
+
 #[macro_use]
 pub mod macros;
 
@@ -52,10 +54,13 @@ pub mod codec;
 
 pub mod error;
 
+pub mod textinput;
+
 pub struct FlutterEngine {
     compositor: RefCell<FlutterCompositorWeakRef>,
     engine_ptr: RefCell<flutter_engine_sys::FlutterEngine>,
     pub channel_registry: ChannelRegistry,
+    pub text_input: RefCell<TextInputManager>,
 }
 
 impl FlutterEngine {
@@ -64,15 +69,23 @@ impl FlutterEngine {
             compositor: RefCell::new(Default::default()),
             engine_ptr: RefCell::new(std::ptr::null_mut()),
             channel_registry: ChannelRegistry::new(),
+            text_input: RefCell::new(TextInputManager::new()),
         }
     }
 
     pub fn set_compositor(&self, compositor: FlutterCompositorWeakRef) {
         self.compositor.replace(compositor.clone());
-        self.channel_registry.set_compositor(compositor);
+        self.channel_registry.set_compositor(compositor.clone());
+        self.text_input.borrow_mut().set_compositor(compositor);
     }
 
     pub fn run(guard: &mut ReentrantMutexGuard<FlutterCompositor>) {
+        guard
+            .engine
+            .text_input
+            .borrow_mut()
+            .register_channels(&guard.engine.channel_registry);
+
         info!("Starting flutter engine");
         let args = vec!["flutter-compositor"];
         let arguments = CStringVec::new(&args);

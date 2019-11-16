@@ -23,6 +23,9 @@ use log::{error, trace};
 use std::borrow::Borrow;
 use tokio::prelude::Future;
 
+
+use log::{debug, info};
+
 #[macro_use]
 mod macros;
 
@@ -105,14 +108,7 @@ pub trait MethodChannel: Channel {
                         let response = match result {
                             Ok(value) => MethodCallResult::Ok(value),
                             Err(error) => {
-                                error!(
-                                    target: handler
-                                        .log_target()
-                                        .unwrap_or("Unknown plugin"),
-                                    "error in method call {}#{}: {}",
-                                    channel,
-                                    method,
-                                    error);
+                                error!("error in method call {}#{}: {}", channel, method, error);
                                 error.into()
                             }
                         };
@@ -180,12 +176,9 @@ pub trait MessageChannel: Channel {
                             Ok(value) => value,
                             Err(error) => {
                                 error!(
-                                    target: handler
-                                        .log_target()
-                                        .unwrap_or("Unknown plugin"),
                                     "error in message handler on channel {}: {}",
-                                    channel,
-                                    error);
+                                    channel, error
+                                );
                                 Value::Null
                             }
                         };
@@ -216,10 +209,6 @@ pub trait MessageChannel: Channel {
 }
 
 pub trait MessageHandler {
-    fn log_target(&self) -> Option<&'static str> {
-        None
-    }
-
     fn on_message(
         &mut self,
         msg: Value,
@@ -228,10 +217,6 @@ pub trait MessageHandler {
 }
 
 pub trait MethodCallHandler {
-    fn log_target(&self) -> Option<&'static str> {
-        None
-    }
-
     fn on_method_call(
         &self,
         call: MethodCall,
