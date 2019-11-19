@@ -23,7 +23,6 @@ use log::{error, trace};
 use std::borrow::Borrow;
 use tokio::prelude::Future;
 
-
 use log::{debug, info};
 
 #[macro_use]

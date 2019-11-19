@@ -197,14 +197,18 @@ impl FlutterCompositorRef {
                 compositor.backend.update();
 
                 // Process callbacks
-                let callbacks: Vec<MainThreadCallback> = compositor.main_thread_receiver.try_iter().collect();
+                let callbacks: Vec<MainThreadCallback> =
+                    compositor.main_thread_receiver.try_iter().collect();
                 for cb in callbacks {
                     match cb {
                         MainThreadCallback::ChannelFn((name, mut f)) => {
-                            compositor.engine.channel_registry.with_channel(&name, |channel| {
-                                f(channel);
-                            });
-                        },
+                            compositor
+                                .engine
+                                .channel_registry
+                                .with_channel(&name, |channel| {
+                                    f(channel);
+                                });
+                        }
                     }
                 }
             }
@@ -212,7 +216,7 @@ impl FlutterCompositorRef {
             //            drawer.get().test(&*window_map.borrow(), compositor_token);
 
             unsafe {
-                flutter_engine_sys::__FlutterEngineFlushPendingTasksNow();
+                flutter::ffi::__FlutterEngineFlushPendingTasksNow();
             }
 
             if RefCell::borrow_mut(event_loop.borrow())

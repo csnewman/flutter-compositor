@@ -2,7 +2,10 @@ use std::ops::Range;
 
 use serde::{Deserialize, Serialize};
 
-use crate::flutter::channel::{BasicMessageChannel, ChannelRegistry, JsonMethodChannel, MessageHandler, MethodCallHandler, MethodChannel};
+use crate::flutter::channel::{
+    BasicMessageChannel, ChannelRegistry, JsonMethodChannel, MessageHandler, MethodCallHandler,
+    MethodChannel,
+};
 use crate::flutter::codec::{json_codec, MethodCall};
 use crate::flutter::error::{MessageError, MethodCallError};
 use crate::flutter::{
@@ -102,7 +105,6 @@ impl MethodCallHandler for TextInputHandler {
     }
 }
 
-
 #[derive(Serialize, Deserialize)]
 struct SetClientArgs(i64, SetClientArgsText);
 
@@ -124,7 +126,6 @@ struct SetClientArgsInputType {
     name: String,
     decimal: Option<bool>,
 }
-
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "camelCase")]

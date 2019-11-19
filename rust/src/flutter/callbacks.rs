@@ -9,9 +9,9 @@ use std::sync::Mutex;
 
 use smithay::backend::egl::ffi as egl_ffi;
 
+use crate::flutter::ffi::{FlutterOpenGLTexture, FlutterPlatformMessage};
 use crate::renderer::gl;
 use crate::FlutterCompositorRef;
-use flutter_engine_sys::FlutterOpenGLTexture;
 
 pub unsafe extern "C" fn present(user_data: *mut c_void) -> bool {
     debug!("present");
@@ -55,7 +55,7 @@ pub unsafe extern "C" fn gl_proc_resolver(
 }
 
 pub unsafe extern "C" fn platform_message_callback(
-    platform_message: *const flutter_engine_sys::FlutterPlatformMessage,
+    platform_message: *const FlutterPlatformMessage,
     user_data: *mut c_void,
 ) {
     debug!("platform_message_callback");

@@ -47,7 +47,7 @@ use crate::flutter::textinput::TextInputManager;
 pub mod macros;
 
 mod callbacks;
-mod ffi;
+pub(crate) mod ffi;
 
 pub mod channel;
 pub mod codec;
@@ -58,7 +58,7 @@ pub mod textinput;
 
 pub struct FlutterEngine {
     compositor: RefCell<FlutterCompositorWeakRef>,
-    engine_ptr: RefCell<flutter_engine_sys::FlutterEngine>,
+    engine_ptr: RefCell<ffi::FlutterEngine>,
     pub channel_registry: ChannelRegistry,
     pub text_input: RefCell<TextInputManager>,
 }
@@ -90,49 +90,39 @@ impl FlutterEngine {
         let args = vec!["flutter-compositor"];
         let arguments = CStringVec::new(&args);
 
-        let (assets_path, icu_data_path) = match env::var("CARGO_MANIFEST_DIR") {
+        let app_dir = env::current_exe()
+            .expect("Cannot get application dir")
+            .parent()
+            .expect("Cannot get application dir")
+            .to_path_buf();
+
+        let assets_path = match env::var("CARGO_MANIFEST_DIR") {
             Ok(proj_dir) => {
                 info!("Running inside cargo project");
                 let proj_dir = PathBuf::from(&proj_dir);
-                (
-                    proj_dir
-                        .parent()
-                        .unwrap()
-                        .join("flutter")
-                        .join("build")
-                        .join("flutter_assets")
-                        .to_str()
-                        .unwrap()
-                        .to_string(),
-                    proj_dir
-                        .join("assets/icudtl.dat")
-                        .to_str()
-                        .unwrap()
-                        .to_string(),
-                )
-            }
-            Err(_) => {
-                let res = env::current_exe()
-                    .expect("Cannot get application dir")
+                proj_dir
                     .parent()
-                    .expect("Cannot get application dir")
-                    .to_path_buf();
-                (
-                    res.join("flutter_assets").to_str().unwrap().to_string(),
-                    res.join("icudtl.dat").to_str().unwrap().to_string(),
-                )
+                    .unwrap()
+                    .join("flutter")
+                    .join("build")
+                    .join("flutter_assets")
+                    .to_str()
+                    .unwrap()
+                    .to_string()
             }
+            Err(_) => app_dir.join("flutter_assets").to_str().unwrap().to_string(),
         };
+
+        let icu_data_path = app_dir.join("icudtl.dat").to_str().unwrap().to_string();
 
         info!("Asset path: {}", &assets_path);
         info!("ICU path: {}", &icu_data_path);
 
-        let renderer_config = flutter_engine_sys::FlutterRendererConfig {
-            type_: flutter_engine_sys::FlutterRendererType::kOpenGL,
-            __bindgen_anon_1: flutter_engine_sys::FlutterRendererConfig__bindgen_ty_1 {
-                open_gl: flutter_engine_sys::FlutterOpenGLRendererConfig {
-                    struct_size: std::mem::size_of::<flutter_engine_sys::FlutterOpenGLRendererConfig>(
-                    ),
+        let renderer_config = ffi::FlutterRendererConfig {
+            type_: ffi::FlutterRendererType::kOpenGL,
+            __bindgen_anon_1: ffi::FlutterRendererConfig__bindgen_ty_1 {
+                open_gl: ffi::FlutterOpenGLRendererConfig {
+                    struct_size: std::mem::size_of::<ffi::FlutterOpenGLRendererConfig>(),
                     make_current: Some(callbacks::make_current),
                     clear_current: Some(callbacks::clear_current),
                     present: Some(callbacks::present),
@@ -147,8 +137,8 @@ impl FlutterEngine {
                 },
             },
         };
-        let project_args = flutter_engine_sys::FlutterProjectArgs {
-            struct_size: std::mem::size_of::<flutter_engine_sys::FlutterProjectArgs>(),
+        let project_args = ffi::FlutterProjectArgs {
+            struct_size: std::mem::size_of::<ffi::FlutterProjectArgs>(),
             assets_path: CString::new(assets_path).unwrap().into_raw(),
             main_path__unused__: std::ptr::null(),
             packages_path__unused__: std::ptr::null(),
@@ -172,6 +162,8 @@ impl FlutterEngine {
             vsync_callback: None,
             custom_dart_entrypoint: std::ptr::null(),
             custom_task_runners: std::ptr::null(),
+            shutdown_dart_vm_when_done: true,
+            compositor: std::ptr::null(),
         };
 
         unsafe {
@@ -186,21 +178,20 @@ impl FlutterEngine {
                 .to_mutex_ptr() as _;
 
             let (result, engine_ptr) = ReentrantMutexGuard::unlocked(guard, move || {
-                let engine_ptr: flutter_engine_sys::FlutterEngine = std::ptr::null_mut();
+                let engine_ptr: ffi::FlutterEngine = std::ptr::null_mut();
 
-                let result = flutter_engine_sys::FlutterEngineRun(
+                let result = ffi::FlutterEngineRun(
                     1,
                     &renderer_config,
                     &project_args,
                     user_data,
-                    &engine_ptr as *const flutter_engine_sys::FlutterEngine
-                        as *mut flutter_engine_sys::FlutterEngine,
+                    &engine_ptr as *const ffi::FlutterEngine as *mut ffi::FlutterEngine,
                 );
 
                 (result, engine_ptr)
             });
 
-            if result != flutter_engine_sys::FlutterEngineResult::kSuccess || engine_ptr.is_null() {
+            if result != ffi::FlutterEngineResult::kSuccess || engine_ptr.is_null() {
                 panic!("Engine creation failed {:?}", result);
             } else {
                 info!("Engine started");
@@ -210,17 +201,14 @@ impl FlutterEngine {
     }
 
     pub fn send_window_metrics_event(&self, width: i32, height: i32, pixel_ratio: f64) {
-        let event = flutter_engine_sys::FlutterWindowMetricsEvent {
-            struct_size: std::mem::size_of::<flutter_engine_sys::FlutterWindowMetricsEvent>(),
+        let event = ffi::FlutterWindowMetricsEvent {
+            struct_size: std::mem::size_of::<ffi::FlutterWindowMetricsEvent>(),
             width: width as usize,
             height: height as usize,
             pixel_ratio,
         };
         unsafe {
-            flutter_engine_sys::FlutterEngineSendWindowMetricsEvent(
-                *self.engine_ptr.as_ptr(),
-                &event,
-            );
+            ffi::FlutterEngineSendWindowMetricsEvent(*self.engine_ptr.as_ptr(), &event);
         }
     }
 
@@ -257,10 +245,7 @@ impl FlutterEngine {
     pub fn send_platform_message(&self, message: PlatformMessage) {
         trace!("Sending message on channel {}", message.channel);
         unsafe {
-            flutter_engine_sys::FlutterEngineSendPlatformMessage(
-                *self.engine_ptr.borrow(),
-                &message.into(),
-            );
+            ffi::FlutterEngineSendPlatformMessage(*self.engine_ptr.borrow(), &message.into());
         }
     }
 
@@ -271,7 +256,7 @@ impl FlutterEngine {
     ) {
         trace!("Sending message response");
         unsafe {
-            flutter_engine_sys::FlutterEngineSendPlatformMessageResponse(
+            ffi::FlutterEngineSendPlatformMessageResponse(
                 *self.engine_ptr.borrow(),
                 response_handle.into(),
                 bytes.as_ptr(),
@@ -282,31 +267,25 @@ impl FlutterEngine {
 
     pub fn shutdown(&self) {
         unsafe {
-            flutter_engine_sys::FlutterEngineShutdown(*self.engine_ptr.borrow());
+            ffi::FlutterEngineShutdown(*self.engine_ptr.borrow());
         }
     }
 
     pub fn register_texture(&self, texture_id: i64) {
         unsafe {
-            flutter_engine_sys::FlutterEngineRegisterExternalTexture(
-                *self.engine_ptr.borrow(),
-                texture_id,
-            );
+            ffi::FlutterEngineRegisterExternalTexture(*self.engine_ptr.borrow(), texture_id);
         }
     }
 
     pub fn unregister_texture(&self, texture_id: i64) {
         unsafe {
-            flutter_engine_sys::FlutterEngineUnregisterExternalTexture(
-                *self.engine_ptr.borrow(),
-                texture_id,
-            );
+            ffi::FlutterEngineUnregisterExternalTexture(*self.engine_ptr.borrow(), texture_id);
         }
     }
 
     pub fn mark_texture_frame_available(&self, texture_id: i64) {
         unsafe {
-            flutter_engine_sys::FlutterEngineMarkExternalTextureFrameAvailable(
+            ffi::FlutterEngineMarkExternalTextureFrameAvailable(
                 *self.engine_ptr.borrow(),
                 texture_id,
             );

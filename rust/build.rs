@@ -1,17 +1,32 @@
 extern crate gl_generator;
 
+use bindgen::EnumVariation;
 use gl_generator::{Api, Fallbacks, Profile, Registry};
-use std::env;
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::{env, fs, io};
 
 fn main() {
-    let dest = env::var("OUT_DIR").unwrap();
-    let dest = Path::new(&dest);
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let root_dir = out_path
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf();
 
-    let mut file_output = File::create(&dest.join("gl_bindings.rs")).unwrap();
+    let mut file_output = File::create(&out_path.join("gl_bindings.rs")).unwrap();
     generate_gl_bindings(&mut file_output);
+    generate_flutter_bindings(&out_path, &root_dir);
 }
 
 fn generate_gl_bindings<W>(dest: &mut W)
@@ -120,4 +135,152 @@ where
     (gl_registry + gles_registry)
         .write_bindings(gl_generator::StructGenerator, dest)
         .unwrap();
+}
+
+fn generate_flutter_bindings(out_path: &PathBuf, root_dir: &PathBuf) {
+    // Try to find flutter
+    let flutter_cmd = which::which("flutter").expect("Unable to find flutter");
+    let flutter_root = flutter_cmd.parent().unwrap().parent().unwrap();
+    let version_path = flutter_cmd
+        .parent()
+        .unwrap()
+        .join("internal")
+        .join("engine.version");
+    println!("cargo:rerun-if-changed={}", flutter_root.to_str().unwrap());
+
+    // Read version
+    let version = fs::read_to_string(version_path.as_path())
+        .expect("Failed to read version file")
+        .trim()
+        .to_string();
+
+    // Download engine
+    let engine_dir = dirs::cache_dir()
+        .unwrap()
+        .join("flutter-engine")
+        .join(&version);
+    let header_file = engine_dir.join("flutter_embedder.h");
+
+    if !engine_dir.exists() {
+        println!("Downloading flutter engine");
+        fs::create_dir_all(&engine_dir);
+        let target_zip = engine_dir.join("download.zip");
+        let engine_url = format!(
+            "https://storage.googleapis.com/flutter_infra/flutter/{}/linux-x64/linux-x64-embedder",
+            &version
+        );
+        download_file(&engine_url, &target_zip);
+
+        println!("Extracting flutter engine");
+        extract_zip(&target_zip, &engine_dir);
+
+        // Fetch latest header (one in embedder zip is very outdated)
+        println!("Overwriting header");
+        download_file("https://raw.githubusercontent.com/flutter/engine/master/shell/platform/embedder/embedder.h", &header_file);
+
+        fs::remove_file(target_zip);
+    }
+
+    // Configure linker
+    println!(
+        "cargo:rustc-link-search=native={}",
+        engine_dir.to_str().unwrap()
+    );
+
+    let config_dir = root_dir.join(".cargo");
+    fs::create_dir(&config_dir);
+    let config_file = config_dir.join("config");
+    if !config_file.exists() {
+        fs::write(
+            config_file,
+            r#"[target.x86_64-unknown-linux-gnu]
+               rustflags = ["-C", "link-args=-Wl,-rpath=$ORIGIN"]
+            "#,
+        )
+        .expect("Failed to write linker config in .cargo/config");
+    }
+
+    // Copy engine library
+    fs::copy(
+        engine_dir.join("libflutter_engine.so"),
+        out_path
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("libflutter_engine.so"),
+    )
+    .expect("Failed to copy engine lib");
+
+    fs::copy(
+        flutter_cmd
+            .parent()
+            .unwrap()
+            .join("cache")
+            .join("artifacts")
+            .join("engine")
+            .join("linux-x64")
+            .join("icudtl.dat"),
+        out_path
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("icudtl.dat"),
+    )
+    .expect("Failed to copy icudtl.dat");
+
+    // Generate header bindings
+    let bindings = bindgen::Builder::default()
+        .header(header_file.to_str().unwrap())
+        .default_enum_style(EnumVariation::Rust {
+            non_exhaustive: false,
+        })
+        .generate()
+        .expect("Unable to generate bindings")
+        .write_to_file(out_path.join("flutter_bindings.rs"))
+        .expect("Couldn't write bindings!");
+}
+
+fn download_file<P: AsRef<Path>>(url: &str, target: P) {
+    let mut resp = reqwest::get(url).expect("Failed to fetch file");
+
+    let mut out = File::create(target).expect("Failed to create download output");
+    io::copy(&mut resp, &mut out).expect("failed to copy content");
+}
+
+fn extract_zip<P: AsRef<Path>>(source: P, target: &PathBuf) {
+    let mut archive = zip::ZipArchive::new(fs::File::open(source).unwrap()).unwrap();
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).unwrap();
+        let outpath = target.join(file.sanitized_name());
+
+        if (&*file.name()).ends_with('/') {
+            fs::create_dir_all(&outpath).unwrap();
+        } else {
+            println!(
+                "File {} extracted to \"{}\" ({} bytes)",
+                i,
+                outpath.as_path().display(),
+                file.size()
+            );
+            if let Some(p) = outpath.parent() {
+                if !p.exists() {
+                    fs::create_dir_all(&p).unwrap();
+                }
+            }
+            let mut outfile = fs::File::create(&outpath).unwrap();
+            io::copy(&mut file, &mut outfile).unwrap();
+        }
+
+        // Get and Set permissions
+        if let Some(mode) = file.unix_mode() {
+            fs::set_permissions(&outpath, fs::Permissions::from_mode(mode)).unwrap();
+        }
+    }
 }
