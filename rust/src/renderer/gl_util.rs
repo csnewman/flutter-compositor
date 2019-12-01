@@ -2,10 +2,10 @@ use smithay::wayland::shm::BufferData;
 
 use crate::renderer::gl;
 use log::info;
-use std::borrow::Cow;
+
 use std::ffi::c_void;
 use std::mem;
-use std::os::raw::c_uint;
+
 
 pub fn upload_texture(gl: gl::Gl, data: BufferData, pool: &[u8]) -> u32 {
     unsafe {

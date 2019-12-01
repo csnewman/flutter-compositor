@@ -12,7 +12,7 @@ use smithay::{
         Display,
     },
     wayland::{
-        compositor::{compositor_init, CompositorToken, SurfaceAttributes, SurfaceEvent},
+        compositor::{compositor_init, CompositorToken, SurfaceEvent},
         data_device::DnDIconRole,
         seat::CursorImageRole,
         shell::{
@@ -30,7 +30,7 @@ use smithay::{
 
 use log::{debug, error, info, trace, warn};
 
-use std::ptr::null;
+
 
 use crate::window_map::{Kind as SurfaceKind, WindowMap};
 
@@ -60,7 +60,7 @@ pub fn init_shell(
             SurfaceEvent::Commit => surface_commit(&surface, ctoken),
             SurfaceEvent::Frame { callback } => callback
                 .implement_closure(|_, _| unreachable!(), None::<fn(_)>, ())
-                .done(0),
+                .done(0), // TODO: Frame events should be sent at the end of a flutter frame
         },
         None,
     );

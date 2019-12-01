@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock, Weak};
+use std::sync::{Arc, Weak};
 
 use super::super::{
     channel::{ChannelImpl, MethodCallHandler, MethodChannel},
@@ -6,7 +6,7 @@ use super::super::{
 };
 
 use crate::{FlutterCompositorRef, FlutterCompositorWeakRef};
-use log::error;
+
 
 pub struct JsonMethodChannel {
     name: &'static str,

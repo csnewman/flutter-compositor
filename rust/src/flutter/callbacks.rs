@@ -1,16 +1,16 @@
 use libc::{c_char, c_uint, c_void};
-use log::{debug, error, info};
+use log::{debug};
 use smithay::backend::graphics::gl::GLGraphicsBackend;
 use std::ffi::CStr;
 
-use crate::flutter::ffi;
-use core::ptr;
-use std::sync::Mutex;
 
-use smithay::backend::egl::ffi as egl_ffi;
+
+
+
+
 
 use crate::flutter::ffi::{FlutterOpenGLTexture, FlutterPlatformMessage};
-use crate::renderer::gl;
+
 use crate::FlutterCompositorRef;
 
 pub unsafe extern "C" fn present(user_data: *mut c_void) -> bool {
@@ -84,11 +84,11 @@ pub extern "C" fn root_isolate_create_callback(_user_data: *mut c_void) {
 //}
 
 pub unsafe extern "C" fn gl_external_texture_frame_callback(
-    user_data: *mut c_void,
-    texture_id: i64,
-    width: usize,
-    height: usize,
-    texture: *mut FlutterOpenGLTexture,
+    _user_data: *mut c_void,
+    _texture_id: i64,
+    _width: usize,
+    _height: usize,
+    _texture: *mut FlutterOpenGLTexture,
 ) -> bool {
     //    info!("gl_external_texture_frame_callback texture_id={} width={} height={}", texture_id, width, height);
 

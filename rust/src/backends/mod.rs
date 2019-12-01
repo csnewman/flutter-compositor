@@ -4,10 +4,10 @@ use crate::shell::init_shell;
 use crate::FlutterCompositorWeakRef;
 use smithay::reexports::wayland_server::protocol::wl_output;
 use smithay::wayland::data_device::{
-    default_action_chooser, init_data_device, set_data_device_focus, DataDeviceEvent,
+    default_action_chooser, init_data_device,
 };
 use smithay::wayland::output::{Mode, Output, PhysicalProperties};
-use smithay::wayland::seat::{KeyboardHandle, Seat, XkbConfig};
+
 use smithay::wayland::shm::init_shm_global;
 use std::borrow::{Borrow, BorrowMut};
 use std::cell::RefCell;
@@ -104,7 +104,7 @@ impl CompositorBackend {
 
         // Init shell
         debug!("Creating shell");
-        let (compositor_token, _, _, window_map) = init_shell(&mut display);
+        let (compositor_token, _, _, _window_map) = init_shell(&mut display);
 
         // Enable clipboard/DND support
         debug!("Initialising data device");
@@ -150,7 +150,7 @@ impl CompositorBackend {
         let seat = FlutterSeat::new(
             compositor.clone(),
             match &self.kind {
-                CompositorBackendKind::WInit(inner) => "Winit".into(),
+                CompositorBackendKind::WInit(_inner) => "Winit".into(),
                 CompositorBackendKind::TtyUDev(inner) => inner.seat_name(),
             },
         );
@@ -205,7 +205,7 @@ impl CompositorBackend {
     pub fn run(&self) {
         info!("run1");
         match &self.kind {
-            CompositorBackendKind::WInit(inner) => {}
+            CompositorBackendKind::WInit(_inner) => {}
             CompositorBackendKind::TtyUDev(inner) => {
                 inner.run(
                     &self.display,
@@ -224,7 +224,7 @@ impl CompositorBackend {
             CompositorBackendKind::WInit(inner) => {
                 inner.update();
             }
-            CompositorBackendKind::TtyUDev(inner) => {
+            CompositorBackendKind::TtyUDev(_inner) => {
                 //                inner.run(&self.display, &mut RefCell::borrow_mut(self.event_loop.borrow()).as_mut().unwrap());
             }
         }

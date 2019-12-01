@@ -7,7 +7,7 @@ use super::super::{
 };
 
 use crate::{FlutterCompositorRef, FlutterCompositorWeakRef};
-use log::error;
+
 
 pub struct EventChannel {
     name: &'static str,

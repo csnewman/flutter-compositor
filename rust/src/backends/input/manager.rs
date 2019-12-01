@@ -1,9 +1,9 @@
 use smithay::backend::input::KeyState;
-use std::borrow::Borrow;
+
 use std::cell::RefCell;
 use std::sync::{mpsc, Arc, RwLock, Weak};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration};
 use wayland_server::protocol::wl_keyboard::WlKeyboard;
 use xkbcommon::xkb;
 
@@ -13,7 +13,7 @@ use crate::flutter::channel::{
 use crate::flutter::codec::{json_codec, Value};
 use crate::flutter::error::MessageError;
 use crate::{FlutterCompositorRef, FlutterCompositorWeakRef};
-use log::{debug, error, info};
+use log::{debug};
 
 use crate::backends::input::glfw::{GLFW_KEY_UNKNOWN, GLFW_MAPPING};
 use crate::json_value;
@@ -192,10 +192,7 @@ impl InputManager {
 
         debug!(
             "key event scancode={} state={:?} keycode={}, content='{}'",
-            scancode,
-            keystate,
-            keycode,
-            content,
+            scancode, keystate, keycode, content,
         );
 
         let direction = match keystate {
@@ -222,7 +219,10 @@ impl InputManager {
         }
 
         // Send text events
-        if !content.is_empty() && keystate == KeyState::Pressed && content.chars().all(|x| !x.is_control()) {
+        if !content.is_empty()
+            && keystate == KeyState::Pressed
+            && content.chars().all(|x| !x.is_control())
+        {
             let compositor_ref = self.compositor.upgrade().unwrap();
             let compositor = compositor_ref.get();
             let mut textinput = compositor.engine.text_input.borrow_mut();

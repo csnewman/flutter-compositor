@@ -5,10 +5,10 @@ extern crate parking_lot;
 
 extern crate rand;
 
-use log::{debug, error, info};
+use log::{info};
 
-use wayland_server::calloop::EventLoop;
-use wayland_server::Display;
+
+
 
 pub mod backends;
 pub mod flutter;
@@ -22,8 +22,8 @@ mod shell;
 use crate::backends::CompositorBackend;
 use crate::flutter::channel::Channel;
 use crate::flutter::FlutterEngine;
-use backends::udev;
-use backends::winit;
+
+
 use parking_lot::{ReentrantMutex, ReentrantMutexGuard};
 use std::borrow::Borrow;
 use std::cell::RefCell;
@@ -142,7 +142,7 @@ impl FlutterCompositor {
 }
 
 impl FlutterCompositorRef {
-    pub fn register_channel<C>(&self, mut channel: C) -> Weak<C>
+    pub fn register_channel<C>(&self, channel: C) -> Weak<C>
     where
         C: Channel + 'static,
     {

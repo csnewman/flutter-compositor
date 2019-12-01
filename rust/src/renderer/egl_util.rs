@@ -29,7 +29,7 @@ impl WrappedDisplay {
     }
 
     pub unsafe fn release_context(&self) {
-        let ret = ffi::egl::MakeCurrent(self.0, ptr::null(), ptr::null(), ptr::null());
+        let _ret = ffi::egl::MakeCurrent(self.0, ptr::null(), ptr::null(), ptr::null());
     }
 }
 

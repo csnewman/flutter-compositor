@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+
 use std::{env, fs, io};
 
 fn main() {
@@ -235,7 +235,7 @@ fn generate_flutter_bindings(out_path: &PathBuf, root_dir: &PathBuf) {
     .expect("Failed to copy icudtl.dat");
 
     // Generate header bindings
-    let bindings = bindgen::Builder::default()
+    let _bindings = bindgen::Builder::default()
         .header(header_file.to_str().unwrap())
         .default_enum_style(EnumVariation::Rust {
             non_exhaustive: false,

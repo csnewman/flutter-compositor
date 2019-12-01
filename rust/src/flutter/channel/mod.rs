@@ -15,15 +15,15 @@ use super::{
 
 use std::{
     borrow::Cow,
-    sync::{Arc, RwLock, Weak},
+    sync::{Arc, RwLock},
 };
 
 use crate::FlutterCompositorRef;
 use log::{error, trace};
-use std::borrow::Borrow;
+
 use tokio::prelude::Future;
 
-use log::{debug, info};
+
 
 #[macro_use]
 mod macros;

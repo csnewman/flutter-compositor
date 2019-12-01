@@ -6,16 +6,16 @@ use crate::flutter::channel::{
     BasicMessageChannel, ChannelRegistry, JsonMethodChannel, MessageHandler, MethodCallHandler,
     MethodChannel,
 };
-use crate::flutter::codec::{json_codec, MethodCall};
-use crate::flutter::error::{MessageError, MethodCallError};
+use crate::flutter::codec::{MethodCall};
+use crate::flutter::error::{MethodCallError};
 use crate::flutter::{
     codec::{value::from_value, Value},
     utils::{OwnedStringUtils, StringUtils},
 };
 use crate::{FlutterCompositorRef, FlutterCompositorWeakRef};
-use std::sync::{Arc, RwLock, Weak};
+use std::sync::{Arc, Weak};
 
-use log::{debug, error, info};
+
 
 const TEXTINPUT_CHANNEL_NAME: &str = "flutter/textinput";
 

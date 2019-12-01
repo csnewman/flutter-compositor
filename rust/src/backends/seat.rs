@@ -37,7 +37,7 @@ impl FlutterSeat {
             let compositor = compositor_ref.get();
 
             let mut seat_ref = compositor.backend.seat.borrow_mut();
-            let mut flutter_seat = seat_ref.as_mut().unwrap();
+            let flutter_seat = seat_ref.as_mut().unwrap();
 
             if seat.as_ref().version() >= 2 {
                 seat.name(flutter_seat.name.clone());
@@ -57,7 +57,7 @@ impl FlutterSeat {
 fn implement_seat<R>(
     compositor: FlutterCompositorWeakRef,
     new_seat: NewResource<wl_seat::WlSeat>,
-    token: CompositorToken<R>,
+    _token: CompositorToken<R>,
 ) -> wl_seat::WlSeat
 where
     R: Role<CursorImageRole> + 'static,
@@ -65,20 +65,20 @@ where
     let dest_comp = compositor.clone();
     new_seat.implement_closure(
         move |request, seat| {
-            let compositor_weak = seat
+            let _compositor_weak = seat
                 .as_ref()
                 .user_data::<FlutterCompositorWeakRef>()
                 .unwrap();
             //            let inner = arc.inner.borrow_mut();
             match request {
-                wl_seat::Request::GetPointer { id } => {
+                wl_seat::Request::GetPointer { id: _ } => {
                     debug!("GetPointer");
                     // let pointer = self::pointer::implement_pointer(id, inner.pointer.as_ref(), token.clone());
                     // if let Some(ref ptr_handle) = inner.pointer {
                     //     ptr_handle.new_pointer(pointer);
                     // }
                 }
-                wl_seat::Request::GetKeyboard { id } => {
+                wl_seat::Request::GetKeyboard { id: _ } => {
                     debug!("GetKeyboard");
 
                     // let keyboard = self::keyboard::implement_keyboard(id, inner.keyboard.as_ref());
@@ -100,7 +100,7 @@ where
             let compositor = compositor_ref.get();
 
             let mut seat_ref = compositor.backend.seat.borrow_mut();
-            let mut flutter_seat = seat_ref.as_mut().unwrap();
+            let flutter_seat = seat_ref.as_mut().unwrap();
             flutter_seat
                 .known_seats
                 .retain(|s| !s.as_ref().equals(&seat.as_ref()));

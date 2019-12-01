@@ -1,11 +1,11 @@
-use std::cell::RefCell;
+
 
 use smithay::{
     reexports::wayland_server::protocol::wl_surface,
     utils::Rectangle,
     wayland::{
         compositor::{
-            roles::Role, CompositorToken, SubsurfaceRole, SurfaceAttributes, TraversalAction,
+            roles::Role, CompositorToken, SubsurfaceRole,
         },
         shell::{
             legacy::{ShellSurface, ShellSurfaceRole},
@@ -60,7 +60,7 @@ where
     }
 
     pub fn insert(&mut self, toplevel: Kind<R>, location: (i32, i32)) {
-        let mut window = Window {
+        let window = Window {
             location,
             surface: Rectangle {
                 x: 0,

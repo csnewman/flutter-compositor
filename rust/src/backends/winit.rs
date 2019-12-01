@@ -1,10 +1,6 @@
 use std::{
     cell::RefCell,
     rc::Rc,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
 };
 
 use smithay::{
@@ -25,10 +21,10 @@ use smithay::{
     },
 };
 
-use log::{debug, error, info, trace, warn};
+use log::{debug, error, info};
 
-use crate::shell::init_shell;
-use chrono::Utc;
+
+
 use smithay::backend::winit::{WinitGraphicsBackend, WinitInputBackend};
 
 use crate::backends::input::handler::FlutterInputHandler;
@@ -64,7 +60,7 @@ impl WInitInner {
 
     pub fn create_window(&self) {
         info!("Creating winit window");
-        let (renderer, mut input) = winit::init_from_builder(
+        let (renderer, input) = winit::init_from_builder(
             WindowBuilder::new()
                 .with_dimensions(LogicalSize::new(1280.0 / 1.5, 800.0 / 1.5))
                 .with_resizable(false)
@@ -88,7 +84,7 @@ impl WInitInner {
         let input = input_borrow.as_mut().unwrap();
 
         debug!("Binding EGL to display");
-        let egl_display = Rc::new(RefCell::new(
+        let _egl_display = Rc::new(RefCell::new(
             if let Ok(egl_display) = renderer.bind_wl_display(&display) {
                 info!("EGL hardware-acceleration enabled");
                 Some(egl_display)
@@ -138,7 +134,7 @@ impl WInitInner {
         unsafe {
             match self.renderer.borrow().as_ref().unwrap().make_current() {
                 Ok(_) => true,
-                Err(val) => {
+                Err(_val) => {
                     error!("Failed to make current");
                     false
                 }

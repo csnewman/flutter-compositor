@@ -8,7 +8,7 @@ use std::{
 };
 
 use crate::FlutterCompositorWeakRef;
-use log::{info, trace, warn};
+use log::{trace, warn};
 use std::cell::RefCell;
 
 pub struct ChannelRegistry {
@@ -30,7 +30,7 @@ impl ChannelRegistry {
 
     pub fn with_channel<F>(&self, channel_name: &str, mut f: F)
     where
-        F: FnMut(&Channel),
+        F: FnMut(&dyn Channel),
     {
         if let Some(channel) = self.channels.borrow().get(channel_name) {
             f(&**channel);
@@ -56,7 +56,7 @@ impl ChannelRegistry {
         }
     }
 
-    pub fn register_channel<C>(&self, mut channel: C) -> Weak<C>
+    pub fn register_channel<C>(&self, channel: C) -> Weak<C>
     where
         C: Channel + 'static,
     {

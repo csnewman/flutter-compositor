@@ -6,10 +6,9 @@ use std::{
     borrow::Cow,
     ffi::{CStr, CString},
     mem, ptr,
-    time::{SystemTime, UNIX_EPOCH},
 };
 
-use log::{error, trace};
+use log::{error};
 use std::convert::Into;
 
 include!(concat!(env!("OUT_DIR"), "/flutter_bindings.rs"));

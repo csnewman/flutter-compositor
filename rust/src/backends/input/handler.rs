@@ -1,14 +1,6 @@
-use std::{
-    cell::RefCell,
-    process::Command,
-    rc::Rc,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
 
-use smithay::backend::session::{auto::AutoSession, Session};
+
+
 use smithay::{
     backend::input::{
         self, Event, InputBackend, InputHandler, KeyState, KeyboardKeyEvent, PointerAxisEvent,
@@ -21,12 +13,12 @@ use smithay::{
     },
 };
 
-use xkbcommon::xkb;
+
 pub use xkbcommon::xkb::{keysyms, Keysym};
 
 use crate::FlutterCompositorWeakRef;
 use log::{debug, error, info, trace, warn};
-use smithay::wayland::seat::XkbConfig;
+
 
 use crate::smithay::backend::input::TouchDownEvent;
 use std::borrow::Borrow;
@@ -67,19 +59,19 @@ impl<B: InputBackend> InputHandler<B> for FlutterInputHandler {
         manager.key(state, keycode);
     }
 
-    fn on_pointer_move(&mut self, _: &input::Seat, evt: B::PointerMotionEvent) {
+    fn on_pointer_move(&mut self, _: &input::Seat, _evt: B::PointerMotionEvent) {
         // TODO: Implement mouse support
     }
 
-    fn on_pointer_move_absolute(&mut self, _: &input::Seat, evt: B::PointerMotionAbsoluteEvent) {
+    fn on_pointer_move_absolute(&mut self, _: &input::Seat, _evt: B::PointerMotionAbsoluteEvent) {
         // TODO: Implement mouse support
     }
 
-    fn on_pointer_button(&mut self, _: &input::Seat, evt: B::PointerButtonEvent) {
+    fn on_pointer_button(&mut self, _: &input::Seat, _evt: B::PointerButtonEvent) {
         // TODO: Implement mouse support
     }
 
-    fn on_pointer_axis(&mut self, _: &input::Seat, evt: B::PointerAxisEvent) {
+    fn on_pointer_axis(&mut self, _: &input::Seat, _evt: B::PointerAxisEvent) {
         // TODO: Implement mouse support
     }
 

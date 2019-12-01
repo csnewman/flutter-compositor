@@ -59,14 +59,14 @@ use smithay::{
     },
 };
 
-use crate::shell::{init_shell, MyWindowMap, Roles};
+use crate::shell::{Roles};
 
 use crate::backends::input::handler::FlutterInputHandler;
-use crate::backends::{CompositorBackend, CompositorBackendKind};
+use crate::backends::{CompositorBackendKind};
 use crate::renderer::egl_util::{WrappedContext, WrappedDisplay};
 use crate::FlutterCompositorWeakRef;
-use chrono::Utc;
-use log::{debug, error, info, trace, warn};
+
+use log::{debug, error, info};
 use smithay::backend::graphics::gl::GLGraphicsBackend;
 use smithay::backend::session::auto::{AutoSessionNotifier, BoundAutoSession};
 use std::ffi::c_void;
@@ -117,8 +117,8 @@ impl UdevInner {
     pub fn init_session(&self) {
         debug!("Initialising session");
         let (session, mut notifier) = AutoSession::new(None).unwrap();
-        let (udev_observer, udev_notifier) = notify_multiplexer();
-        let udev_session_id = notifier.register(udev_observer);
+        let (udev_observer, _udev_notifier) = notify_multiplexer();
+        let _udev_session_id = notifier.register(udev_observer);
 
         self.session.replace(Some(session));
         self.notifier.replace(Some(notifier));
@@ -147,7 +147,7 @@ impl UdevInner {
         )
         .unwrap();
 
-        let udev_event_source = udev_backend_bind(udev_backend, &event_loop.handle())
+        let _udev_event_source = udev_backend_bind(udev_backend, &event_loop.handle())
             .map_err(|e| -> IoError { e.into() })
             .unwrap();
 
@@ -156,7 +156,7 @@ impl UdevInner {
             self.session.borrow().as_ref().unwrap().clone().into(),
             &context,
         );
-        let libinput_session_id = self
+        let _libinput_session_id = self
             .notifier
             .borrow_mut()
             .as_mut()
@@ -166,7 +166,7 @@ impl UdevInner {
         let mut libinput_backend = LibinputInputBackend::new(libinput_context, None);
         libinput_backend.set_handler(FlutterInputHandler::new(self.compositor.borrow().clone()));
 
-        let libinput_event_source = libinput_bind(libinput_backend, event_loop.handle())
+        let _libinput_event_source = libinput_bind(libinput_backend, event_loop.handle())
             .map_err(|e| -> IoError { e.into() })
             .unwrap();
 
@@ -177,7 +177,7 @@ impl UdevInner {
         self.session.borrow().as_ref().unwrap().seat()
     }
 
-    pub fn run(&self, display: &RefCell<Option<Display>>, event_loop: &mut EventLoop<()>) {
+    pub fn run(&self, _display: &RefCell<Option<Display>>, event_loop: &mut EventLoop<()>) {
         let session_event_source =
             auto_session_bind(self.notifier.replace(None).unwrap(), &event_loop.handle())
                 .map_err(|(e, _)| e)
@@ -212,7 +212,7 @@ impl UdevInner {
         unsafe {
             match self.surface.borrow().as_ref().unwrap().make_current() {
                 Ok(_) => true,
-                Err(val) => {
+                Err(_val) => {
                     error!("Failed to make current");
                     false
                 }
@@ -376,7 +376,7 @@ impl</*S: SessionNotifier,*/ Data: 'static> UdevHandler for UdevHandlerImpl</*S,
                     //                logger: self.logger.clone(),
                 });
 
-                let device_session_id = inner
+                let _device_session_id = inner
                     .notifier
                     .borrow_mut()
                     .as_mut()
@@ -384,8 +384,8 @@ impl</*S: SessionNotifier,*/ Data: 'static> UdevHandler for UdevHandlerImpl</*S,
                     .register(device.observer());
 
                 //                let device_session_id = self.notifier.register(device.observer());
-                let dev_id = device.device_id();
-                let event_source = device_bind(&self.loop_handle, device)
+                let _dev_id = device.device_id();
+                let _event_source = device_bind(&self.loop_handle, device)
                     .map_err(|e| -> IoError { e.into() })
                     .unwrap();
 
@@ -410,11 +410,11 @@ impl</*S: SessionNotifier,*/ Data: 'static> UdevHandler for UdevHandlerImpl</*S,
         }
     }
 
-    fn device_changed(&mut self, device: dev_t) {
+    fn device_changed(&mut self, _device: dev_t) {
         info!("device_changed")
     }
 
-    fn device_removed(&mut self, device: dev_t) {
+    fn device_removed(&mut self, _device: dev_t) {
         info!("device_removed")
     }
 }
@@ -432,7 +432,7 @@ pub struct DrmHandlerImpl {
 impl DeviceHandler for DrmHandlerImpl {
     type Device = RenderDevice;
 
-    fn vblank(&mut self, crtc: crtc::Handle) {
+    fn vblank(&mut self, _crtc: crtc::Handle) {
         //        if let Some(drawer) = self.backends.borrow().get(&crtc) {
         //            {
         //                let (x, y) = *self.pointer_location.borrow();
