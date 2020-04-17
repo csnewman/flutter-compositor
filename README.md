@@ -1,3 +1,8 @@
+**Rewrite in progress: flutter-drm**
+
+Currently most work is happening on [flutter-drm](https://github.com/csnewman/flutter-drm). flutter-compositor will then be rewritten to expose wayland ontop of the flutter-drm rendering library.
+
+
 # Flutter Compositor
 flutter-compositor is an experimental library for embedding flutter for wayland compositor creation. This library allows you to write a wayland compositor using dart and flutter (and a small amount of Rust glue logic), with all the standard libraries you are used to.
 
